@@ -33,15 +33,20 @@ class OsuBot(OsuIrc):
     def __init__(self, name: str, passwd: str, debug=False):
         super().__init__(name.replace(' ', '_').lower(), passwd, debug=debug)
 
-        self.event_channel_message = []
-        self.event_private_message = []
-        self.event_someone_joined_room = []
-        self.event_someone_change_slot = []
-        self.event_someone_joined_slot = []
-        self.event_room_changed_song = []
-        self.event_room_changed_host = []
-        self.event_someone_left_room = []
-        self.event_match_closed = []
+        self.event_channel_message = []  # 房间消息
+        self.event_private_message = []  # 私聊消息
+        self.event_someone_joined_room = []  # 加入房间(仅创建房间时同步触发)
+        self.event_someone_change_slot = []  # 有人换位
+        self.event_someone_joined_slot = []  # 加入房间某位置(新玩家加入)
+        self.event_room_changed_song = []  # 改歌曲
+        self.event_room_changed_host = []  # 换房主
+        self.event_someone_left_room = []  # 有人离开房间
+        self.event_match_closed = []  # 房间关闭
+        self.event_all_players_are_ready = []  # 所有人准备就绪
+        self.event_user_finished_playing = []  # 有人完成曲目
+        self.event_host_is_changing_map = []  # 房主开始修改地图
+        self.event_match_has_started = []  # 游戏开始
+        self.event_match_finished = []  # 所有人完成游戏
 
         self.run_after_start = []
 
@@ -74,6 +79,16 @@ class OsuBot(OsuIrc):
                 _appender(self.event_someone_left_room)
             if reg_type == models.Codes.match_closed:
                 _appender(self.event_match_closed)
+            if reg_type == models.Codes.all_players_are_ready:
+                _appender(self.event_all_players_are_ready)
+            if reg_type == models.Codes.user_finished_playing:
+                _appender(self.event_user_finished_playing)
+            if reg_type == models.Codes.host_is_changing_map:
+                _appender(self.event_host_is_changing_map)
+            if reg_type == models.Codes.match_has_started:
+                _appender(self.event_match_has_started)
+            if reg_type == models.Codes.match_finished:
+                _appender(self.event_match_finished)
 
         return reg
 
@@ -122,33 +137,57 @@ class OsuBot(OsuIrc):
 
                     if name == "banchobot":
                         self.logger(f"[Bancho] in {channel_id}: {msg}", debug=True)
-                        if "joined in slot" in msg:
-                            u_name = msg[:msg.find("joined in slot")].strip()
-                            slot = msg[msg.find("joined in slot") + len("joined in slot"):].strip()
-                            slot = slot[:-1] if slot.endswith(".") else slot
-                            self.call_func(self.event_someone_joined_slot, models.Message(u_name, slot, channel_id))
-
-                        if "moved to slot" in msg:
-                            u_name = msg[:msg.find("moved to slot")].strip()
-                            slot = msg[msg.find("moved to slot") + len("moved to slot"):].strip()
-                            slot = slot[:-1] if slot.endswith(".") else slot
-                            self.call_func(self.event_someone_change_slot, models.Message(u_name, slot, channel_id))
-
-                        if "left the game" in msg:
-                            u_name = msg[:msg.find("left the game")].strip()
-                            self.call_func(self.event_someone_left_room,
-                                           models.Message(u_name, f"{u_name} left {channel_id}", channel_id))
 
                         if "beatmap changed to" in msg:
                             _msg = msg[len("beatmap changed to"):].strip()
                             self.call_func(self.event_room_changed_song, models.Message("", _msg, channel_id))
 
-                        if "became the host" in msg:
+                        elif "joined in slot" in msg:
+                            u_name = msg[:msg.find("joined in slot")].strip()
+                            slot = msg[msg.find("joined in slot") + len("joined in slot"):].strip()
+                            slot = slot[:-1] if slot.endswith(".") else slot
+                            self.call_func(self.event_someone_joined_slot, models.Message(u_name, slot, channel_id))
+
+                        elif "moved to slot" in msg:
+                            u_name = msg[:msg.find("moved to slot")].strip()
+                            slot = msg[msg.find("moved to slot") + len("moved to slot"):].strip()
+                            slot = slot[:-1] if slot.endswith(".") else slot
+                            self.call_func(self.event_someone_change_slot, models.Message(u_name, slot, channel_id))
+
+                        elif "left the game" in msg:
+                            u_name = msg[:msg.find("left the game")].strip()
+                            self.call_func(self.event_someone_left_room,
+                                           models.Message(u_name, f"{u_name} left {channel_id}", channel_id))
+
+                        elif "became the host" in msg:
                             u_name = msg[:msg.find("became the host")].strip()
                             self.call_func(self.event_room_changed_host, models.Message(u_name, msg, channel_id))
 
-                        if msg == "closed the match":
+                        elif "finished playing" in msg:
+                            uname = msg[:msg.find("finished playing")].strip()
+                            _score = gettext_between(msg, "score: ", ", ").strip()
+
+                            _st = f"finished playing (score: {_score}, "
+                            pass_str = gettext_between(msg, _st, ").").strip()
+
+                            self.call_func(self.event_user_finished_playing,
+                                           models.UserGrade(uname, channel_id, True if pass_str == "passed" else False,
+                                                            _score))
+
+                        elif msg == "host is changing map...":
+                            self.call_func(self.event_host_is_changing_map, models.Message("", msg, channel_id))
+
+                        elif msg == "the match has started!":
+                            self.call_func(self.event_match_has_started, models.Message("", msg, channel_id))
+
+                        elif msg == "the match has finished!":
+                            self.call_func(self.event_match_finished, models.Message("", msg, channel_id))
+
+                        elif msg == "closed the match":
                             self.call_func(self.event_match_closed, models.Message("", msg, channel_id))
+
+                        elif "all players are ready" in msg:
+                            self.call_func(self.event_all_players_are_ready, models.Message("", msg, channel_id))
 
 
                     else:
@@ -167,8 +206,8 @@ class BotApi:
     def send_private_message(self, username, message):
         self.bot.send(f"PRIVMSG {username} :{message}")
 
-    def senf_channel_message(self, room, message):
-        self.bot.send(f"PRIVMSG {room} :{message}")
+    def send_channel_message(self, room_id, message):
+        self.bot.send(f"PRIVMSG {room_id} :{message}")
 
     def room_create(self, room_name, passwd="", free_mods=False, max_member=""):
         self.bot.send(f"PRIVMSG BanchoBot :mp make {room_name}")
@@ -197,3 +236,16 @@ class BotApi:
 
     def room_set_host(self, room_id, host_name):
         self.bot.send(f"PRIVMSG {room_id} :!mp host {host_name}")
+
+    def room_set_mods(self, room_id, mods):
+        self.bot.send(f"PRIVMSG {room_id} :!mp mods {mods}")
+
+    def room_strat_game(self, room_id):
+        self.bot.send(f"PRIVMSG {room_id} :!mp start")
+
+    def room_change_map(self, room_id, map_id, mode=""):
+        _run = f"PRIVMSG {room_id} :!mp map {map_id}"
+        if mode != "":
+            _run = f"{_run} {mode}"
+        self.bot.send(_run)
+

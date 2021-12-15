@@ -75,16 +75,23 @@ class OsuIrc:
     def receive(self, size=2048):
         return self.wss.recv(size).decode().lower()
 
-    def logger(self, msg, debug=False, warning=False, error=False):
+    def logger(self, *args, debug=False, warning=False, error=False, test=False, color=None):
         _tm = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        if error:
-            ColorfulPrint.printout(f"[{_tm}][ERROR] {msg}", ColorfulPrint.Color.RED)
+        msg = ""
+        for i in args:
+            msg = f"{msg} {i}"
+        msg = msg[1:]
+
+        if test:
+            ColorfulPrint.printout(f"[{_tm}][TEST] {msg}", ColorfulPrint.Color.LIGHTMAGENTA_EX if color is None else color)
+        elif error:
+            ColorfulPrint.printout(f"[{_tm}][ERROR] {msg}", ColorfulPrint.Color.RED if color is None else color)
         elif warning:
-            ColorfulPrint.printout(f"[{_tm}][WARNING] {msg}", ColorfulPrint.Color.LIGHTYELLOW_EX)
+            ColorfulPrint.printout(f"[{_tm}][WARNING] {msg}", ColorfulPrint.Color.LIGHTYELLOW_EX if color is None else color)
         elif debug and self.debug:
-            ColorfulPrint.printout(f"[{_tm}][DEBUG] {msg}", ColorfulPrint.Color.BLUE)
+            ColorfulPrint.printout(f"[{_tm}][DEBUG] {msg}", ColorfulPrint.Color.BLUE if color is None else color)
         elif not debug:
-            ColorfulPrint.printout(f"[{_tm}][INFO] {msg}")
+            ColorfulPrint.printout(f"[{_tm}][INFO] {msg}", ColorfulPrint.Color.DEFAULT if color is None else color)
 
     def close(self):
         self.wss.close()
