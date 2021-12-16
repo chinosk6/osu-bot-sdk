@@ -1,8 +1,14 @@
 import osu_irc_sdk
 from osu_irc_sdk import models
 
-bot = osu_irc_sdk.OsuBot("", "", debug=True)  # see: https://osu.ppy.sh/p/irc
+_proxy = osu_irc_sdk.OsuIrcProxy(osu_irc_sdk.OsuIrcProxy.PROXY_TYPE_SOCKS5, "127.0.0.1", 10086)
+bot = osu_irc_sdk.OsuBot("", "", debug=True, proxy=_proxy)  # see: https://osu.ppy.sh/p/irc
 
+
+@bot.receiver(models.Codes.run_after_start)
+def rrr():
+    # bot.logger("开房间", bot.api.room_create("aaa's game", "114514", True, 4), test=True)
+    pass
 
 @bot.receiver(models.Codes.someone_joined_room)
 def join(event: models.Message):
@@ -30,12 +36,6 @@ def join_slot(event: models.Message):
 @bot.receiver(models.Codes.someone_changed_slot)
 def change_slot(event: models.Message):
     bot.logger(f"{event.name} 在 {event.channel_id} 中, 移动到了 {event.message} 号位", test=True)
-
-
-@bot.receiver(models.Codes.run_after_start)
-def rrr():
-    # bot.api.room_set_passwd("#mp_95224191", "114514")
-    bot.logger("开房间", bot.api.room_create("chinosk's game", "114514", True, 4), test=True)
 
 
 @bot.receiver(models.Codes.changed_song)

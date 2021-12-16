@@ -90,6 +90,15 @@ bot.strat()
 
 
 
+### Connect Bancho via proxy
+
+```python
+_proxy = osu_irc_sdk.OsuIrcProxy(osu_irc_sdk.OsuIrcProxy.PROXY_TYPE_SOCKS5, "your proxy host", port)
+bot = osu_irc_sdk.OsuBot("", "", debug=True, proxy=_proxy)  # see: https://osu.ppy.sh/p/irc
+```
+
+
+
 # Events
 
 - `models.Codes`

@@ -1,5 +1,7 @@
 import socket
 import time
+import socks
+from typing import Optional
 
 
 class ColorfulPrint:
@@ -52,14 +54,34 @@ class ColorfulPrint:
     def printout(content, color=Color.DEFAULT, bgcolor=BGColor.DEFAULT, style=Style.DEFAULT):
         print("\033[{};{};{}m{}\033[0m".format(style, color, bgcolor, content))
 
+class OsuIrcProxy:
+    PROXY_TYPE_HTTP = socks.PROXY_TYPE_HTTP
+    PROXY_TYPE_SOCKS4 = socks.PROXY_TYPE_SOCKS4
+    PROXY_TYPE_SOCKS5 = socks.PROXY_TYPE_SOCKS5
+
+    def __init__(self, proxy_type, addr, port, rdns=True, username=None, password=None):
+        self.proxy_type = proxy_type
+        self.addr = addr
+        self.port = port
+        self.rdns = rdns
+        self.username = username
+        self.password = password
+
 
 class OsuIrc:
-    def __init__(self, name: str, password: str, host="irc.ppy.sh", port=6667, debug=False):
+    def __init__(self, name: str, password: str, host="irc.ppy.sh", port=6667, debug=False,
+                 proxy: Optional[OsuIrcProxy] = None):
         self.debug = debug
         self.host = host
         self.port = port
         self.name = name
         self.password = password
+
+        if proxy is not None:
+            socks.set_default_proxy(proxy.proxy_type, proxy.addr, proxy.port, proxy.rdns,
+                                    proxy.username, proxy.password)
+            socket.socket = socks.socksocket
+
         self.wss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def connect(self):

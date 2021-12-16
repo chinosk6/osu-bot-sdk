@@ -1,4 +1,4 @@
-from .ws import OsuIrc
+from .ws import OsuIrc, OsuIrcProxy
 from . import models
 import typing as t
 from threading import Thread
@@ -30,8 +30,8 @@ def gettext_between(text: str, before: str, after: str, is_include=False) -> str
 
 
 class OsuBot(OsuIrc):
-    def __init__(self, name: str, passwd: str, debug=False):
-        super().__init__(name.replace(' ', '_').lower(), passwd, debug=debug)
+    def __init__(self, name: str, passwd: str, debug=False, proxy: t.Optional[OsuIrcProxy] = None):
+        super().__init__(name.replace(' ', '_').lower(), passwd, debug=debug, proxy=proxy)
 
         self.event_channel_message = []  # 房间消息
         self.event_private_message = []  # 私聊消息
